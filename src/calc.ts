@@ -69,8 +69,9 @@ export class CsvCalc {
 /** 普通にfor文で計算するパティーン */
 export function normalCalc(csv: string, targetCellNum: number): { result: number, num: number } {
     const CSV_SEP = ",";
-    const csvArr: string[] = Array.from(this.csv);
+    const csvArr: string[] = Array.from(csv);
     let calcArr: number[] = [];
+    console.time("calctime");
     for (let i = 0, l = csvArr.length, cellNum = 0, currentCellStartI = 0; i < l; i++) {
         switch (csvArr[i]) {
             case CSV_SEP:
@@ -78,28 +79,31 @@ export function normalCalc(csv: string, targetCellNum: number): { result: number
                 // セルの終わりなので、現在のセル確認
                 if (cellNum === targetCellNum) {
                     // 現在ターゲットセルにいれば、中身を計算対象に入れる(数値じゃない可能性は・・無視！！)
-                    calcArr.push(parseFloat(csvArr.slice(currentCellStartI, i - 1).join()));
+                    calcArr.push(parseFloat((csvArr.slice(currentCellStartI, i - 1).join("")).replace(/^\"+|\"+$/g, "")));
                 }
                 currentCellStartI = i + 1; // 次の文字がセル開始位置
-                break;
-            case CSV_SEP:
-                // セル区切りなのでセル番を更新
-                cellNum++;
-                break;
-            case CsvCalc.SEPARATOR:
-                // 行区切りなので、セル番をリセット
-                cellNum = 0;
+                if (csvArr[i] === CSV_SEP) {
+                    // セル区切りなのでセル番を更新
+                    cellNum++;
+                } else if (csvArr[i] === CsvCalc.SEPARATOR) {
+                    // 行区切りなので、セル番をリセット
+                    cellNum = 0;
+                }
                 break;
             default:
         }
     }
+    console.timeEnd("calctime");
     return { result: Ave(calcArr), num: calcArr.length };
 }
 
 function Ave(calcArr: number[]): number {
     let sum = 0;
     for (let i = 0, l = calcArr.length; i < l; i++) {
-        sum += calcArr[i];
+        if (!isNaN(calcArr[i])) {
+            // NaNじゃないやつだけ計算対象にする。つまりNaNは実質０としてカウントされ、割り算に影響する。
+            sum += calcArr[i];
+        }
     }
     return sum / calcArr.length;
 }

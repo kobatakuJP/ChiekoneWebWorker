@@ -21,10 +21,10 @@ cg.onclick = function () {
     a.open("GET", "http://127.0.0.1:8000/bigfile/rice.csv", true);
     a.send();
     a.onreadystatechange = function() {
-        if (a.status === XMLHttpRequest.DONE) {
-            console.time("h");
-            let result = calc.normalCalc(a.responseText, 0);
-            console.timeEnd("h");
+        if (a.readyState === XMLHttpRequest.DONE) {
+            console.time("total");
+            let result = calc.normalCalc(a.responseText, 5);
+            console.timeEnd("total");
             console.log("num:" + result.num + ", ave:" + result.result);
         }
     }

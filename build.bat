@@ -1,1 +1,1 @@
-node_modules/.bin/tsc
+node_modules/.bin/webpack
