@@ -7,7 +7,6 @@ enum WorkType {
 }
 
 let w = new Worker("worker.js");
-let w2 = new Worker("worker.js");
 const wb = document.getElementById("workbtn");
 const cg = document.getElementById("csvget");
 let sb = new SharedArrayBuffer(12);
@@ -28,9 +27,15 @@ cg.onclick = function () {
     a.send();
     a.onreadystatechange = function () {
         if (a.readyState === XMLHttpRequest.DONE) {
-            requestCalc({ csv: a.responseText, targetCellNum: 5, noData: NDT.ignore }, WorkType.normal);
+            requestCalc({ csv: a.responseText, targetCellNum: 5, noData: NDT.ignore }, getWorkType());
         }
     }
+}
+
+/** 画面のワークタイプ選択ラジオボタンからワークタイプを割り出す */
+function getWorkType(): WorkType {
+    const wr = <HTMLFormElement>document.getElementById("worktype-radio");
+    return <WorkType>(parseInt(wr["worktype"].value));
 }
 
 function requestCalc(arg: CArg, worktype: WorkType) {

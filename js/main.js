@@ -105,6 +105,7 @@ class CsvCalc {
             }
         }
         this.doWorker(lastStart, this.csvArr.length);
+        return;
     }
     doWorker(s, e) {
         const arg = {
@@ -191,7 +192,6 @@ var WorkType;
     WorkType[WorkType["normal"] = 1] = "normal";
 })(WorkType || (WorkType = {}));
 let w = new Worker("worker.js");
-let w2 = new Worker("worker.js");
 const wb = document.getElementById("workbtn");
 const cg = document.getElementById("csvget");
 let sb = new SharedArrayBuffer(12);
@@ -210,10 +210,14 @@ cg.onclick = function () {
     a.send();
     a.onreadystatechange = function () {
         if (a.readyState === XMLHttpRequest.DONE) {
-            requestCalc({ csv: a.responseText, targetCellNum: 5, noData: calc_1.NoDataTreat.ignore }, WorkType.normal);
+            requestCalc({ csv: a.responseText, targetCellNum: 5, noData: calc_1.NoDataTreat.ignore }, getWorkType());
         }
     };
 };
+function getWorkType() {
+    const wr = document.getElementById("worktype-radio");
+    return (parseInt(wr["worktype"].value));
+}
 function requestCalc(arg, worktype) {
     let result;
     let time = Date.now();

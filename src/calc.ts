@@ -46,7 +46,7 @@ export class CsvCalc {
         this.csv = csv;
         this.csvToBuf();
     }
-    getAve(cellNum: Number) {
+    getAve(cellNum: Number): CalcResult {
         /** 前のループの改行の次の文字のインデックス */
         let lastStart = 0;
         /** レコード数チェック変数 */
@@ -62,6 +62,7 @@ export class CsvCalc {
             }
         }
         this.doWorker(lastStart, this.csvArr.length); // ぴったり終わることなんてないので最後の分を送る
+        return;
     }
     doWorker(s: number, e: number) {
         // TypedArray.prototype.sliceは結局コピーなのでもったいない。開始終了だけ渡す。
@@ -73,6 +74,7 @@ export class CsvCalc {
             },
             noData: NoDataTreat.ignore
         }
+        // worker
     }
     /** 文字列をバッファに変換する */
     csvToBuf() {
@@ -100,7 +102,7 @@ export function normalCalc(arg: CalcArg): CalcResult {
             case CsvCalc.SEPARATOR:
                 // セルの終わりなので、現在のセル確認
                 if (cellNum === arg.targetCellNum) {
-                    // 現在ターゲットセルにいれば、中身を計算対象に入れる(数値じゃない可能性は・・無視！！)
+                    // 現在ターゲットセルにいれば、中身を計算対象に入れる。数値じゃなきゃNaNを入れて、後処理で頑張ってもらう。
                     calcArr.push(parseFloat((csvArr.slice(currentCellStartI, i - 1).join("")).replace(/^\"+|\"+$/g, "")));
                 }
                 currentCellStartI = i + 1; // 次の文字がセル開始位置
