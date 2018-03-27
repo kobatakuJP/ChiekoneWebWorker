@@ -87,7 +87,7 @@ var NoDataTreat;
     NoDataTreat[NoDataTreat["zero"] = 1] = "zero";
 })(NoDataTreat = exports.NoDataTreat || (exports.NoDataTreat = {}));
 class CsvCalc {
-    calc(csv) {
+    constructor(csv) {
         this.csv = csv;
         this.csvToBuf();
     }
@@ -209,15 +209,20 @@ cg.onclick = function () {
             let result = calc.normalCalc({ csv: a.responseText, targetCellNum: 5, noData: calc_1.NoDataTreat.ignore });
             console.timeEnd("total");
             resultOutPut(result);
+            console.time("workinit");
+            const c = new calc.CsvCalc(a.responseText);
+            console.timeEnd("workinit");
         }
     };
 };
 function resultOutPut(result) {
-    console.log("linenum:" + result.lineNum + ", ave:" + result.val + ", nodata:" + result.noDataIdx.length);
+    const resultstr = "linenum:" + result.lineNum + ", ave:" + result.val + ", nodata:" + result.noDataIdx.length;
+    const d = document.getElementById("calc-result");
+    d.innerHTML = resultstr;
 }
 
 
 /***/ })
 
 /******/ });
-//# sourceMappingURL=bundle.js.map
+//# sourceMappingURL=main.js.map

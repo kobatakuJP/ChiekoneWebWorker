@@ -27,10 +27,16 @@ cg.onclick = function () {
             let result = calc.normalCalc({ csv: a.responseText, targetCellNum: 5, noData: NDT.ignore });
             console.timeEnd("total");
             resultOutPut(result);
+
+            console.time("workinit");
+            const c = new calc.CsvCalc(a.responseText);
+            console.timeEnd("workinit");
         }
     }
 }
 
 function resultOutPut(result: CR) {
-    console.log("linenum:" + result.lineNum + ", ave:" + result.val + ", nodata:" + result.noDataIdx.length);
+    const resultstr = "linenum:" + result.lineNum + ", ave:" + result.val + ", nodata:" + result.noDataIdx.length
+    const d = <HTMLDivElement>document.getElementById("calc-result");
+    d.innerHTML = resultstr;
 }

@@ -43,7 +43,7 @@ export class CsvCalc {
     static SEPARATOR: string = "\n";
     /** ワーカが処理するレコードの単位 */
     static WORK_UNIT_NUM: number = 1000 * 10;
-    calc(csv: string) {
+    constructor(csv: string) {
         this.csv = csv;
         this.csvToBuf();
     }
