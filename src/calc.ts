@@ -4,7 +4,6 @@ export interface CalcArg {
     noData: NoDataTreat
 }
 
-
 interface WorkArg {
     indices: Indices;
     noData: NoDataTreat;

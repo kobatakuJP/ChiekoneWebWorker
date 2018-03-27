@@ -1,5 +1,10 @@
 import * as calc from "./calc";
-import { NoDataTreat as NDT, CalcResult as CR } from "./calc";
+import { NoDataTreat as NDT, CalcArg as CArg, CalcResult as CRslt } from "./calc";
+
+enum WorkType {
+    webworker,
+    normal
+}
 
 let w = new Worker("worker.js");
 let w2 = new Worker("worker.js");
@@ -23,20 +28,31 @@ cg.onclick = function () {
     a.send();
     a.onreadystatechange = function () {
         if (a.readyState === XMLHttpRequest.DONE) {
-            console.time("total");
-            let result = calc.normalCalc({ csv: a.responseText, targetCellNum: 5, noData: NDT.ignore });
-            console.timeEnd("total");
-            resultOutPut(result);
-
-            console.time("workinit");
-            const c = new calc.CsvCalc(a.responseText);
-            console.timeEnd("workinit");
+            requestCalc({ csv: a.responseText, targetCellNum: 5, noData: NDT.ignore }, WorkType.normal);
         }
     }
 }
 
-function resultOutPut(result: CR) {
-    const resultstr = "linenum:" + result.lineNum + ", ave:" + result.val + ", nodata:" + result.noDataIdx.length
+function requestCalc(arg: CArg, worktype: WorkType) {
+    let result: calc.CalcResult;
+    let time = Date.now();
+    switch (worktype) {
+        case WorkType.webworker:
+            const c = new calc.CsvCalc(arg.csv);
+            // result = c.getAve(5);
+            break;
+        case WorkType.normal:
+            result = calc.normalCalc(arg);
+            break;
+        default:
+            alert("worktypeがおかしいんじゃ:" + worktype);
+    }
+    time = Date.now() - time;
+    resultOutPut(result, time, worktype);
+}
+
+function resultOutPut(result: CRslt, ms: number, worktype: WorkType) {
+    const resultstr = result ? "worktype:" + WorkType[worktype] + "<br>time:" + ms + "ms" + "<br>linenum:" + result.lineNum + "<br>ave:" + result.val + "<br>nodata:" + result.noDataIdx.length : "null!";
     const d = <HTMLDivElement>document.getElementById("calc-result");
     d.innerHTML = resultstr;
 }
