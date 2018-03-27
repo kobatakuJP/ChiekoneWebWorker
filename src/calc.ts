@@ -1,5 +1,13 @@
+export interface CalcArg {
+    csv: string,
+    targetCellNum: number,
+    noData: NoDataTreat
+}
+
+
 interface WorkArg {
     indices: Indices;
+    noData: NoDataTreat;
     csvBuf: SharedArrayBuffer;
 }
 
@@ -7,6 +15,20 @@ interface WorkArg {
 interface Indices {
     startI: number;
     endI: number;
+}
+
+/** データがない場合の扱い */
+export enum NoDataTreat {
+    /** ないものとして計算する */
+    ignore,
+    /** ゼロとして計算する */
+    zero
+}
+
+export interface CalcResult {
+    val: number;
+    lineNum: number;
+    noDataIdx: number[];
 }
 
 export class CsvCalc {
@@ -49,7 +71,8 @@ export class CsvCalc {
             indices: {
                 startI: s,
                 endI: e
-            }
+            },
+            noData: NoDataTreat.ignore
         }
     }
     /** 文字列をバッファに変換する */
@@ -67,9 +90,9 @@ export class CsvCalc {
 }
 
 /** 普通にfor文で計算するパティーン */
-export function normalCalc(csv: string, targetCellNum: number): { result: number, num: number } {
+export function normalCalc(arg: CalcArg): CalcResult {
     const CSV_SEP = ",";
-    const csvArr: string[] = Array.from(csv);
+    const csvArr: string[] = Array.from(arg.csv);
     let calcArr: number[] = [];
     console.time("calctime");
     for (let i = 0, l = csvArr.length, cellNum = 0, currentCellStartI = 0; i < l; i++) {
@@ -77,7 +100,7 @@ export function normalCalc(csv: string, targetCellNum: number): { result: number
             case CSV_SEP:
             case CsvCalc.SEPARATOR:
                 // セルの終わりなので、現在のセル確認
-                if (cellNum === targetCellNum) {
+                if (cellNum === arg.targetCellNum) {
                     // 現在ターゲットセルにいれば、中身を計算対象に入れる(数値じゃない可能性は・・無視！！)
                     calcArr.push(parseFloat((csvArr.slice(currentCellStartI, i - 1).join("")).replace(/^\"+|\"+$/g, "")));
                 }
@@ -94,16 +117,22 @@ export function normalCalc(csv: string, targetCellNum: number): { result: number
         }
     }
     console.timeEnd("calctime");
-    return { result: Ave(calcArr), num: calcArr.length };
+    return Ave(calcArr, arg.noData);
 }
 
-function Ave(calcArr: number[]): number {
+function Ave(calcArr: number[], ndt: NoDataTreat): CalcResult {
+    let noData: number[] = [];
     let sum = 0;
     for (let i = 0, l = calcArr.length; i < l; i++) {
         if (!isNaN(calcArr[i])) {
-            // NaNじゃないやつだけ計算対象にする。つまりNaNは実質０としてカウントされ、割り算に影響する。
+            // 数値は普通に足す
             sum += calcArr[i];
+        } else {
+            // データなし配列に添字を入れる
+            noData.push(i);
         }
     }
-    return sum / calcArr.length;
+    // Noデータを０扱いするかどうかで割り算を変える
+    const result = sum / (ndt === NoDataTreat.zero ? calcArr.length : calcArr.length - noData.length);
+    return { val: result, lineNum: calcArr.length, noDataIdx: noData };
 }

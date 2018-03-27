@@ -81,6 +81,11 @@
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+var NoDataTreat;
+(function (NoDataTreat) {
+    NoDataTreat[NoDataTreat["ignore"] = 0] = "ignore";
+    NoDataTreat[NoDataTreat["zero"] = 1] = "zero";
+})(NoDataTreat = exports.NoDataTreat || (exports.NoDataTreat = {}));
 class CsvCalc {
     calc(csv) {
         this.csv = csv;
@@ -107,7 +112,8 @@ class CsvCalc {
             indices: {
                 startI: s,
                 endI: e
-            }
+            },
+            noData: NoDataTreat.ignore
         };
     }
     csvToBuf() {
@@ -122,16 +128,16 @@ class CsvCalc {
 CsvCalc.SEPARATOR = "\n";
 CsvCalc.WORK_UNIT_NUM = 1000 * 10;
 exports.CsvCalc = CsvCalc;
-function normalCalc(csv, targetCellNum) {
+function normalCalc(arg) {
     const CSV_SEP = ",";
-    const csvArr = Array.from(csv);
+    const csvArr = Array.from(arg.csv);
     let calcArr = [];
     console.time("calctime");
     for (let i = 0, l = csvArr.length, cellNum = 0, currentCellStartI = 0; i < l; i++) {
         switch (csvArr[i]) {
             case CSV_SEP:
             case CsvCalc.SEPARATOR:
-                if (cellNum === targetCellNum) {
+                if (cellNum === arg.targetCellNum) {
                     calcArr.push(parseFloat((csvArr.slice(currentCellStartI, i - 1).join("")).replace(/^\"+|\"+$/g, "")));
                 }
                 currentCellStartI = i + 1;
@@ -146,17 +152,22 @@ function normalCalc(csv, targetCellNum) {
         }
     }
     console.timeEnd("calctime");
-    return { result: Ave(calcArr), num: calcArr.length };
+    return Ave(calcArr, arg.noData);
 }
 exports.normalCalc = normalCalc;
-function Ave(calcArr) {
+function Ave(calcArr, ndt) {
+    let noData = [];
     let sum = 0;
     for (let i = 0, l = calcArr.length; i < l; i++) {
         if (!isNaN(calcArr[i])) {
             sum += calcArr[i];
         }
+        else {
+            noData.push(i);
+        }
     }
-    return sum / calcArr.length;
+    const result = sum / (ndt === NoDataTreat.zero ? calcArr.length : calcArr.length - noData.length);
+    return { val: result, lineNum: calcArr.length, noDataIdx: noData };
 }
 
 
@@ -173,6 +184,7 @@ function Ave(calcArr) {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const calc = __webpack_require__(/*! ./calc */ "./src/calc.ts");
+const calc_1 = __webpack_require__(/*! ./calc */ "./src/calc.ts");
 let w = new Worker("worker.js");
 let w2 = new Worker("worker.js");
 const wb = document.getElementById("workbtn");
@@ -194,12 +206,15 @@ cg.onclick = function () {
     a.onreadystatechange = function () {
         if (a.readyState === XMLHttpRequest.DONE) {
             console.time("total");
-            let result = calc.normalCalc(a.responseText, 5);
+            let result = calc.normalCalc({ csv: a.responseText, targetCellNum: 5, noData: calc_1.NoDataTreat.ignore });
             console.timeEnd("total");
-            console.log("num:" + result.num + ", ave:" + result.result);
+            resultOutPut(result);
         }
     };
 };
+function resultOutPut(result) {
+    console.log("linenum:" + result.lineNum + ", ave:" + result.val + ", nodata:" + result.noDataIdx.length);
+}
 
 
 /***/ })
