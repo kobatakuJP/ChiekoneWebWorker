@@ -1,10 +1,10 @@
 module.exports = {
   mode: 'development',
-  entry: './src/main.ts',
+  entry: { main: './src/main.ts', work: "./src/worker.ts" },
   output: {
     path: `${__dirname}/js`,
     // 出力ファイル名
-    filename: 'bundle.js'
+    filename: '[name].js'
   },
 
   module: {
