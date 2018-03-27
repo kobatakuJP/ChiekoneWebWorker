@@ -129,28 +129,33 @@ class CsvCalc {
 CsvCalc.SEPARATOR = "\n";
 CsvCalc.WORK_UNIT_NUM = 1000 * 10;
 exports.CsvCalc = CsvCalc;
+const CSV_SEP = ",";
+function parseCSV(arg) {
+    switch (arg.csvArr[arg.i]) {
+        case CSV_SEP:
+        case CsvCalc.SEPARATOR:
+            if (arg.cellNum === arg.targetCellNum) {
+                arg.calcArr.push(parseFloat((arg.csvArr.slice(arg.currentCellStartI, arg.i - 1).join("")).replace(/^\"+|\"+$/g, "")));
+            }
+            arg.currentCellStartI = arg.i + 1;
+            if (arg.csvArr[arg.i] === CSV_SEP) {
+                arg.cellNum++;
+            }
+            else if (arg.csvArr[arg.i] === CsvCalc.SEPARATOR) {
+                arg.cellNum = 0;
+            }
+            break;
+        default:
+    }
+}
 function normalCalc(arg) {
     const CSV_SEP = ",";
     const csvArr = Array.from(arg.csv);
     let calcArr = [];
     console.time("calctime");
-    for (let i = 0, l = csvArr.length, cellNum = 0, currentCellStartI = 0; i < l; i++) {
-        switch (csvArr[i]) {
-            case CSV_SEP:
-            case CsvCalc.SEPARATOR:
-                if (cellNum === arg.targetCellNum) {
-                    calcArr.push(parseFloat((csvArr.slice(currentCellStartI, i - 1).join("")).replace(/^\"+|\"+$/g, "")));
-                }
-                currentCellStartI = i + 1;
-                if (csvArr[i] === CSV_SEP) {
-                    cellNum++;
-                }
-                else if (csvArr[i] === CsvCalc.SEPARATOR) {
-                    cellNum = 0;
-                }
-                break;
-            default:
-        }
+    const parseArg = { csvArr: csvArr, calcArr: calcArr, currentCellStartI: 0, i: 0, cellNum: 0, targetCellNum: arg.targetCellNum };
+    for (const l = csvArr.length; parseArg.i < l; parseArg.i++) {
+        parseCSV(parseArg);
     }
     console.timeEnd("calctime");
     return Ave(calcArr, arg.noData);

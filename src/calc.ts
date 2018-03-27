@@ -90,32 +90,39 @@ export class CsvCalc {
     }
 }
 
+const CSV_SEP = ",";
+
+function parseCSV(arg: { csvArr: string[], calcArr: number[], currentCellStartI: number, i: number, cellNum: number, targetCellNum: number }) {
+    switch (arg.csvArr[arg.i]) {
+        case CSV_SEP:
+        case CsvCalc.SEPARATOR:
+            // セルの終わりなので、現在のセル確認
+            if (arg.cellNum === arg.targetCellNum) {
+                // 現在ターゲットセルにいれば、中身を計算対象に入れる。数値じゃなきゃNaNを入れて、後処理で頑張ってもらう。
+                arg.calcArr.push(parseFloat((arg.csvArr.slice(arg.currentCellStartI, arg.i - 1).join("")).replace(/^\"+|\"+$/g, "")));
+            }
+            arg.currentCellStartI = arg.i + 1; // 次の文字がセル開始位置
+            if (arg.csvArr[arg.i] === CSV_SEP) {
+                // セル区切りなのでセル番を更新
+                arg.cellNum++;
+            } else if (arg.csvArr[arg.i] === CsvCalc.SEPARATOR) {
+                // 行区切りなので、セル番をリセット
+                arg.cellNum = 0;
+            }
+            break;
+        default:
+    }
+}
+
 /** 普通にfor文で計算するパティーン */
 export function normalCalc(arg: CalcArg): CalcResult {
     const CSV_SEP = ",";
     const csvArr: string[] = Array.from(arg.csv);
     let calcArr: number[] = [];
     console.time("calctime");
-    for (let i = 0, l = csvArr.length, cellNum = 0, currentCellStartI = 0; i < l; i++) {
-        switch (csvArr[i]) {
-            case CSV_SEP:
-            case CsvCalc.SEPARATOR:
-                // セルの終わりなので、現在のセル確認
-                if (cellNum === arg.targetCellNum) {
-                    // 現在ターゲットセルにいれば、中身を計算対象に入れる。数値じゃなきゃNaNを入れて、後処理で頑張ってもらう。
-                    calcArr.push(parseFloat((csvArr.slice(currentCellStartI, i - 1).join("")).replace(/^\"+|\"+$/g, "")));
-                }
-                currentCellStartI = i + 1; // 次の文字がセル開始位置
-                if (csvArr[i] === CSV_SEP) {
-                    // セル区切りなのでセル番を更新
-                    cellNum++;
-                } else if (csvArr[i] === CsvCalc.SEPARATOR) {
-                    // 行区切りなので、セル番をリセット
-                    cellNum = 0;
-                }
-                break;
-            default:
-        }
+    const parseArg = { csvArr: csvArr, calcArr: calcArr, currentCellStartI: 0, i: 0, cellNum: 0, targetCellNum: arg.targetCellNum };
+    for (const l = csvArr.length; parseArg.i < l; parseArg.i++) {
+        parseCSV(parseArg);
     }
     console.timeEnd("calctime");
     return Ave(calcArr, arg.noData);
