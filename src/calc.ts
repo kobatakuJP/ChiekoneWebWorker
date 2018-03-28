@@ -1,13 +1,16 @@
+import { Utils as U } from "./utils";
+
 export interface CalcArg {
     csv: string,
     targetCellNum: number,
     noData: NoDataTreat
 }
 
-interface WorkArg {
+export interface WorkArg {
     indices: Indices;
+    saBuf: SharedArrayBuffer;
+    targetCellNum: number;
     noData: NoDataTreat;
-    csvBuf: SharedArrayBuffer;
 }
 
 /** 配列の対象インデックス、開始終了 */
@@ -39,42 +42,67 @@ export class CsvCalc {
     buf: SharedArrayBuffer;
     /** SharedArrayBufferを使うためのView */
     bufView: Float32Array;
-    static SEPARATOR: string = "\n";
-    /** ワーカが処理するレコードの単位 */
-    static WORK_UNIT_NUM: number = 1000 * 10;
-    constructor(csv: string) {
+    /** データなしの場合の扱い規定 */
+    noData: NoDataTreat;
+    static LINE_SEPARATOR_CODE: number = "\n".charCodeAt(0);
+    /** 同時実行ワーカ数 */
+    static WORK_NUM: number = 8; // TODO とりあえず８。
+    constructor(csv: string, noData: NoDataTreat) {
         this.csv = csv;
+        this.noData = noData;
         this.csvToBuf();
     }
-    getAve(cellNum: Number): CalcResult {
-        /** 前のループの改行の次の文字のインデックス */
-        let lastStart = 0;
-        /** レコード数チェック変数 */
-        let recordCount = 0;
-        for (let csvI = 0, csvL = this.csvArr.length; csvI < csvL; csvI++) {
-            if (CsvCalc.SEPARATOR === this.csvArr[csvI][0]) {
-                recordCount++;
-                if (recordCount === CsvCalc.WORK_UNIT_NUM) {
-                    this.doWorker(lastStart, csvI);
-                    recordCount = 0;
-                    lastStart = csvI + 1; // 改行の一つ後ろの文字からやるために
+
+    /** 
+     * 平均値を含む結果を返す。  
+     */
+    async getAve(cellNum: number): Promise<CalcResult> {
+        const promiz = this.separateAndAssignWork(cellNum);
+        const vals = await Promise.all(promiz);
+        return U.margeAve(vals, this.noData);
+    }
+
+    /** csvをざっと切ってワーカに渡す、を繰り返す。 */
+    private separateAndAssignWork(cellNum: number): Promise<CalcResult>[] {
+        let result: Promise<CalcResult>[] = [];
+        const length = this.bufView.length;
+        /** 均等割りした場合の数。これをもとにざっくり仕事を切っていく */
+        const aboutSepIndex = Math.ceil(length / CsvCalc.WORK_NUM);
+        let startI = 0;
+        for (let i = aboutSepIndex; i < length; i++) {
+            if (this.bufView[i] === CsvCalc.LINE_SEPARATOR_CODE || i === length - 1/*最後が改行じゃないかもしれないし・・・*/) {
+                // とりあえず次の改行までを仕事範囲とする。
+                result.push(this.doWorker(startI, i, cellNum));
+                startI = i + 1; // 次のスタートはこの改行の次の文字から
+                i = i + aboutSepIndex - 1; // 次の終わりはざっと飛んだあたり、ざっと飛ぶのではあるのだけど一応for文の+1を考慮して-1するような繊細な面も持ち合わせる。
+                if (i > length) {
+                    break;
                 }
             }
         }
-        this.doWorker(lastStart, this.csvArr.length); // ぴったり終わることなんてないので最後の分を送る
-        return;
+        // 最後の一回はほとんどの場合半端になるはずなので、ここで実行。
+        result.push(this.doWorker(startI, length - 1, cellNum))
+        return result;
     }
-    doWorker(s: number, e: number) {
+
+    private doWorker(s: number, e: number, cellNum: number): Promise<CalcResult> {
         // TypedArray.prototype.sliceは結局コピーなのでもったいない。開始終了だけ渡す。
-        const arg: WorkArg = {
-            csvBuf: this.buf,
-            indices: {
-                startI: s,
-                endI: e
-            },
-            noData: NoDataTreat.ignore
-        }
-        // worker
+        return new Promise((resolve, reject) => {
+            const arg: WorkArg = {
+                saBuf: this.buf,
+                indices: {
+                    startI: s,
+                    endI: e
+                },
+                noData: NoDataTreat.ignore,
+                targetCellNum: cellNum
+            }
+            let w = new Worker("worker.js");
+            w.onmessage = function (ev) {
+                resolve(<CalcResult>ev.data);
+            };
+            w.postMessage(arg);
+        });
     }
     /** 文字列をバッファに変換する */
     csvToBuf() {
@@ -90,57 +118,15 @@ export class CsvCalc {
     }
 }
 
-const CSV_SEP = ",";
-
-function parseCSV(arg: { csvArr: string[], calcArr: number[], currentCellStartI: number, i: number, cellNum: number, targetCellNum: number }) {
-    switch (arg.csvArr[arg.i]) {
-        case CSV_SEP:
-        case CsvCalc.SEPARATOR:
-            // セルの終わりなので、現在のセル確認
-            if (arg.cellNum === arg.targetCellNum) {
-                // 現在ターゲットセルにいれば、中身を計算対象に入れる。数値じゃなきゃNaNを入れて、後処理で頑張ってもらう。
-                arg.calcArr.push(parseFloat((arg.csvArr.slice(arg.currentCellStartI, arg.i - 1).join("")).replace(/^\"+|\"+$/g, "")));
-            }
-            arg.currentCellStartI = arg.i + 1; // 次の文字がセル開始位置
-            if (arg.csvArr[arg.i] === CSV_SEP) {
-                // セル区切りなのでセル番を更新
-                arg.cellNum++;
-            } else if (arg.csvArr[arg.i] === CsvCalc.SEPARATOR) {
-                // 行区切りなので、セル番をリセット
-                arg.cellNum = 0;
-            }
-            break;
-        default:
-    }
-}
-
 /** 普通にfor文で計算するパティーン */
 export function normalCalc(arg: CalcArg): CalcResult {
-    const CSV_SEP = ",";
     const csvArr: string[] = Array.from(arg.csv);
     let calcArr: number[] = [];
     console.time("calctime");
     const parseArg = { csvArr: csvArr, calcArr: calcArr, currentCellStartI: 0, i: 0, cellNum: 0, targetCellNum: arg.targetCellNum };
     for (const l = csvArr.length; parseArg.i < l; parseArg.i++) {
-        parseCSV(parseArg);
+        U.parseCSV(parseArg);
     }
     console.timeEnd("calctime");
-    return Ave(calcArr, arg.noData);
-}
-
-function Ave(calcArr: number[], ndt: NoDataTreat): CalcResult {
-    let noData: number[] = [];
-    let sum = 0;
-    for (let i = 0, l = calcArr.length; i < l; i++) {
-        if (!isNaN(calcArr[i])) {
-            // 数値は普通に足す
-            sum += calcArr[i];
-        } else {
-            // データなし配列に添字を入れる
-            noData.push(i);
-        }
-    }
-    // Noデータを０扱いするかどうかで割り算を変える
-    const result = sum / (ndt === NoDataTreat.zero ? calcArr.length : calcArr.length - noData.length);
-    return { val: result, lineNum: calcArr.length, noDataIdx: noData };
+    return U.getAve(calcArr, arg.noData);
 }

@@ -38,13 +38,13 @@ function getWorkType(): WorkType {
     return <WorkType>(parseInt(wr["worktype"].value));
 }
 
-function requestCalc(arg: CArg, worktype: WorkType) {
+async function requestCalc(arg: CArg, worktype: WorkType) {
     let result: calc.CalcResult;
     let time = Date.now();
     switch (worktype) {
         case WorkType.webworker:
-            const c = new calc.CsvCalc(arg.csv);
-            // result = c.getAve(5);
+            const c = new calc.CsvCalc(arg.csv, arg.noData);
+            result = await c.getAve(arg.targetCellNum);
             break;
         case WorkType.normal:
             result = calc.normalCalc(arg);
