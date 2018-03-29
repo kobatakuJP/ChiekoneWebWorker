@@ -6,20 +6,9 @@ enum WorkType {
     normal
 }
 
-let w = new Worker("worker.js");
-const wb = document.getElementById("workbtn");
 const cg = document.getElementById("csvget");
 let sb = new SharedArrayBuffer(12);
 let bufView = new Float32Array(sb);
-
-wb.onclick = function () {
-    w.postMessage(sb);
-    setTimeout(function () {
-        for (let i = 0; i < 10; i++) {
-            console.log(bufView[i])
-        }
-    }, 1000)
-};
 
 cg.onclick = function () {
     const a = new XMLHttpRequest();
