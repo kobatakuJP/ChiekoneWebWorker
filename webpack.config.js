@@ -2,7 +2,7 @@ module.exports = {
   mode: 'development',
   entry: { main: './src/main.ts', worker: "./src/worker.ts" },
   output: {
-    path: `${__dirname}/js`,
+    path: `${__dirname}/WebContent`,
     // 出力ファイル名
     filename: '[name].js'
   },
