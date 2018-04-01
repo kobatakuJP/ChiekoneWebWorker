@@ -27,17 +27,17 @@ export enum NoDataTreat {
     zero
 }
 
+/** 計算結果 */
 export interface CalcResult {
     val: number;
     lineNum: number;
-    noDataIdx: number[];
+    noDataNum: number;
+    invalidDataNum: number;
 }
 
 export class CsvCalc {
     /** 入力元CSV */
     csv: string;
-    /** CSVを一文字ずつの配列にしたもの。𩸽対策で文字単位で入れたいため。 */
-    csvArr: string[];
     /** Workerとメモリシェアするために */
     buf: SharedArrayBuffer;
     /** SharedArrayBufferを使うためのView */
@@ -106,27 +106,28 @@ export class CsvCalc {
     }
     /** 文字列をバッファに変換する */
     csvToBuf() {
-        // 一文字ごとの配列にする。
-        this.csvArr = Array.from(this.csv);
         // 一文字4最大バイトなのでlenght*4
-        this.buf = new SharedArrayBuffer(this.csvArr.length * 4);
+        this.buf = new SharedArrayBuffer(this.csv.length * 4);
         // ArrayBufferをシステムで扱うためにviewを作成
         this.bufView = new Float32Array(this.buf);
-        for (let i = 0, l = this.bufView.length; i < l; i++) {
-            this.bufView[i] = this.csvArr[i].codePointAt(0);
+        const ite = this.csv[Symbol.iterator]();
+        let i = 0;
+        for (let v of ite) {
+            this.bufView[i] = v.codePointAt(0);
+            i++;
         }
+        this.bufView = this.bufView.slice(0, i);
     }
 }
 
 /** 普通にfor文で計算するパティーン */
 export function normalCalc(arg: CalcArg): CalcResult {
-    const csvArr: string[] = Array.from(arg.csv);
+    console.time("nParseTime");
+    const parse = U.parseCSVKai(arg.csv[Symbol.iterator](), (v: string) => v, U.CSV_SEP, U.LINE_SEP, arg.targetCellNum);
+    console.timeEnd("nParseTime");
     let calcArr: number[] = [];
-    console.time("calctime");
-    const parseArg = { csvArr: csvArr, calcArr: calcArr, currentCellStartI: 0, i: 0, cellNum: 0, targetCellNum: arg.targetCellNum };
-    for (const l = csvArr.length; parseArg.i < l; parseArg.i++) {
-        U.parseCSV(parseArg);
+    for (let i = 0, l = parse.targetArr.length; i < l; i++) {
+        calcArr.push(parseFloat((parse.targetArr[i]).replace(/^\"+|\"+$/g, "")))
     }
-    console.timeEnd("calctime");
-    return U.getAve(calcArr, arg.noData);
+    return U.getAve(calcArr, parse.lineNum, arg.noData);
 }

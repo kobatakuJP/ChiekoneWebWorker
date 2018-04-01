@@ -135,27 +135,29 @@ class CsvCalc {
         });
     }
     csvToBuf() {
-        this.csvArr = Array.from(this.csv);
-        this.buf = new SharedArrayBuffer(this.csvArr.length * 4);
+        this.buf = new SharedArrayBuffer(this.csv.length * 4);
         this.bufView = new Float32Array(this.buf);
-        for (let i = 0, l = this.bufView.length; i < l; i++) {
-            this.bufView[i] = this.csvArr[i].codePointAt(0);
+        const ite = this.csv[Symbol.iterator]();
+        let i = 0;
+        for (let v of ite) {
+            this.bufView[i] = v.codePointAt(0);
+            i++;
         }
+        this.bufView = this.bufView.slice(0, i);
     }
 }
 CsvCalc.LINE_SEPARATOR_CODE = "\n".charCodeAt(0);
 CsvCalc.WORK_NUM = 8;
 exports.CsvCalc = CsvCalc;
 function normalCalc(arg) {
-    const csvArr = Array.from(arg.csv);
+    console.time("nParseTime");
+    const parse = utils_1.Utils.parseCSVKai(arg.csv[Symbol.iterator](), (v) => v, utils_1.Utils.CSV_SEP, utils_1.Utils.LINE_SEP, arg.targetCellNum);
+    console.timeEnd("nParseTime");
     let calcArr = [];
-    console.time("calctime");
-    const parseArg = { csvArr: csvArr, calcArr: calcArr, currentCellStartI: 0, i: 0, cellNum: 0, targetCellNum: arg.targetCellNum };
-    for (const l = csvArr.length; parseArg.i < l; parseArg.i++) {
-        utils_1.Utils.parseCSV(parseArg);
+    for (let i = 0, l = parse.targetArr.length; i < l; i++) {
+        calcArr.push(parseFloat((parse.targetArr[i]).replace(/^\"+|\"+$/g, "")));
     }
-    console.timeEnd("calctime");
-    return utils_1.Utils.getAve(calcArr, arg.noData);
+    return utils_1.Utils.getAve(calcArr, parse.lineNum, arg.noData);
 }
 exports.normalCalc = normalCalc;
 
@@ -179,19 +181,7 @@ var WorkType;
     WorkType[WorkType["webworker"] = 0] = "webworker";
     WorkType[WorkType["normal"] = 1] = "normal";
 })(WorkType || (WorkType = {}));
-let w = new Worker("worker.js");
-const wb = document.getElementById("workbtn");
 const cg = document.getElementById("csvget");
-let sb = new SharedArrayBuffer(12);
-let bufView = new Float32Array(sb);
-wb.onclick = function () {
-    w.postMessage(sb);
-    setTimeout(function () {
-        for (let i = 0; i < 10; i++) {
-            console.log(bufView[i]);
-        }
-    }, 1000);
-};
 cg.onclick = function () {
     const a = new XMLHttpRequest();
     a.open("GET", "http://127.0.0.1:8000/bigfile/rice.csv", true);
@@ -224,7 +214,7 @@ async function requestCalc(arg, worktype) {
     resultOutPut(result, time, worktype);
 }
 function resultOutPut(result, ms, worktype) {
-    const resultstr = result ? "worktype:" + WorkType[worktype] + "<br>time:" + ms + "ms" + "<br>linenum:" + result.lineNum + "<br>ave:" + result.val + "<br>nodata:" + result.noDataIdx.length : "null!";
+    const resultstr = result ? "worktype:" + WorkType[worktype] + "<br>time:" + ms + "ms" + "<br>linenum:" + result.lineNum + "<br>ave:" + result.val + "<br>nodata:" + result.noDataNum + "<br>invalidData:" + result.invalidDataNum : "null!";
     const d = document.getElementById("calc-result");
     d.innerHTML = resultstr;
 }
@@ -245,23 +235,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const calc_1 = __webpack_require__(/*! ./calc */ "./src/calc.ts");
 var Utils;
 (function (Utils) {
-    const CSV_SEP = ",";
-    const LINE_SEP = "\n";
-    const CSV_SEP_CODE = CSV_SEP.codePointAt(0);
-    const LINE_SEP_CODE = LINE_SEP.codePointAt(0);
-    const TRIM_STR_CODE = "\"".codePointAt(0);
+    Utils.CSV_SEP = ",";
+    Utils.LINE_SEP = "\n";
+    Utils.CSV_SEP_CODE = Utils.CSV_SEP.codePointAt(0);
+    Utils.LINE_SEP_CODE = Utils.LINE_SEP.codePointAt(0);
+    Utils.TRIM_STR_CODE = "\"".codePointAt(0);
     function parseCSV(arg) {
         switch (arg.csvArr[arg.i]) {
-            case CSV_SEP:
-            case LINE_SEP:
+            case Utils.CSV_SEP:
+            case Utils.LINE_SEP:
                 if (arg.cellNum === arg.targetCellNum) {
                     arg.calcArr.push(parseFloat((arg.csvArr.slice(arg.currentCellStartI, arg.i).join("")).replace(/^\"+|\"+$/g, "")));
                 }
                 arg.currentCellStartI = arg.i + 1;
-                if (arg.csvArr[arg.i] === CSV_SEP) {
+                if (arg.csvArr[arg.i] === Utils.CSV_SEP) {
                     arg.cellNum++;
                 }
-                else if (arg.csvArr[arg.i] === LINE_SEP) {
+                else if (arg.csvArr[arg.i] === Utils.LINE_SEP) {
                     arg.cellNum = 0;
                 }
                 break;
@@ -269,71 +259,58 @@ var Utils;
         }
     }
     Utils.parseCSV = parseCSV;
-    function parseCSVForBuf(arg) {
-        switch (arg.csvBuf[arg.i]) {
-            case CSV_SEP_CODE:
-            case LINE_SEP_CODE:
-                if (arg.cellNum === arg.targetCellNum) {
-                    arg.calcArr.push(parseFloat(getStrArrFromF32Arr(arg.currentCellStartI, arg.i, arg.csvBuf, TRIM_STR_CODE)));
+    function parseCSVKai(ite, tostr, csvSep, lineSep, targetCellNum) {
+        let targetCellVal = [];
+        let targetArr = [];
+        let currentCellNum = 0;
+        let lineNum = 0;
+        for (let t = ite.next(); t && t.value; t = ite.next()) {
+            switch (t.value) {
+                case csvSep:
+                    currentCellNum++;
+                    break;
+                case lineSep:
+                    currentCellNum = 0;
+                    lineNum++;
+                    break;
+                default:
+            }
+            if (currentCellNum === targetCellNum) {
+                if (t.value !== csvSep && t.value !== lineSep) {
+                    targetCellVal.push(tostr(t.value));
                 }
-                arg.currentCellStartI = arg.i + 1;
-                if (arg.csvBuf[arg.i] === CSV_SEP_CODE) {
-                    arg.cellNum++;
-                }
-                else if (arg.csvBuf[arg.i] === LINE_SEP_CODE) {
-                    arg.cellNum = 0;
-                }
-                break;
-            default:
-        }
-    }
-    Utils.parseCSVForBuf = parseCSVForBuf;
-    function getStrArrFromF32Arr(s, e, f, trimStrCode) {
-        let frontTrimNum = 0;
-        let backTrimNum = 0;
-        for (let i = s; i < e; i++) {
-            if (f[i] === trimStrCode) {
-                frontTrimNum++;
             }
             else {
-                break;
+                if (targetCellVal.length !== 0) {
+                    targetArr.push(targetCellVal.join(""));
+                    targetCellVal = [];
+                }
             }
         }
-        for (let i = e - 1; i > s; i--) {
-            if (f[i] === trimStrCode) {
-                backTrimNum++;
-            }
-            else {
-                break;
-            }
-        }
-        let result = [];
-        for (let i = s + frontTrimNum, l = e - backTrimNum; i < l; i++) {
-            result.push(String.fromCodePoint(f[i]));
-        }
-        return result.join("");
+        return { targetArr, lineNum };
     }
-    function getAve(calcArr, ndt) {
-        let noData = [];
+    Utils.parseCSVKai = parseCSVKai;
+    function getAve(calcArr, lineNum, ndt) {
+        let invalidData = [];
         let sum = 0;
         for (let i = 0, l = calcArr.length; i < l; i++) {
             if (!isNaN(calcArr[i])) {
                 sum += calcArr[i];
             }
             else {
-                noData.push(i);
+                invalidData.push(i);
             }
         }
-        const result = sum / (ndt === calc_1.NoDataTreat.zero ? calcArr.length : calcArr.length - noData.length);
-        return { val: result, lineNum: calcArr.length, noDataIdx: noData };
+        const result = sum / (ndt === calc_1.NoDataTreat.zero ? lineNum : calcArr.length - invalidData.length);
+        return { val: result, lineNum, noDataNum: lineNum - calcArr.length, invalidDataNum: invalidData.length };
     }
     Utils.getAve = getAve;
     function margeAve(rs, ndt) {
-        let tmpresult = { lineNum: 0, noDataIdx: [], val: 0 };
+        let tmpresult = { lineNum: 0, val: 0, noDataNum: 0, invalidDataNum: 0 };
         for (let i = 0, l = rs.length; i < l; i++) {
             switch (ndt) {
                 case calc_1.NoDataTreat.ignore:
-                    tmpresult.val += rs[i].val * (rs[i].lineNum - rs[i].noDataIdx.length);
+                    tmpresult.val += rs[i].val * (rs[i].lineNum - rs[i].noDataNum - rs[i].invalidDataNum);
                     break;
                 case calc_1.NoDataTreat.zero:
                     tmpresult.val += rs[i].val * rs[i].lineNum;
@@ -341,12 +318,13 @@ var Utils;
                 default:
             }
             tmpresult.lineNum += rs[i].lineNum;
-            tmpresult.noDataIdx = tmpresult.noDataIdx.concat(rs[i].noDataIdx);
+            tmpresult.invalidDataNum += rs[i].invalidDataNum;
+            tmpresult.noDataNum += rs[i].noDataNum;
         }
         let result = tmpresult;
         switch (ndt) {
             case calc_1.NoDataTreat.ignore:
-                result.val = result.val / (result.lineNum - result.noDataIdx.length);
+                result.val = result.val / (result.lineNum - result.noDataNum - result.invalidDataNum);
                 break;
             case calc_1.NoDataTreat.zero:
                 result.val = result.val / result.lineNum;

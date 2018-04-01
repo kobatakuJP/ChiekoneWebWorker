@@ -7,9 +7,6 @@ enum WorkType {
 }
 
 const cg = document.getElementById("csvget");
-let sb = new SharedArrayBuffer(12);
-let bufView = new Float32Array(sb);
-
 cg.onclick = function () {
     const a = new XMLHttpRequest();
     a.open("GET", "http://127.0.0.1:8000/bigfile/rice.csv", true);
@@ -28,7 +25,7 @@ function getWorkType(): WorkType {
 }
 
 async function requestCalc(arg: CArg, worktype: WorkType) {
-    let result: calc.CalcResult;
+    let result: CRslt;
     let time = Date.now();
     switch (worktype) {
         case WorkType.webworker:
@@ -46,7 +43,7 @@ async function requestCalc(arg: CArg, worktype: WorkType) {
 }
 
 function resultOutPut(result: CRslt, ms: number, worktype: WorkType) {
-    const resultstr = result ? "worktype:" + WorkType[worktype] + "<br>time:" + ms + "ms" + "<br>linenum:" + result.lineNum + "<br>ave:" + result.val + "<br>nodata:" + result.noDataIdx.length : "null!";
+    const resultstr = result ? "worktype:" + WorkType[worktype] + "<br>time:" + ms + "ms" + "<br>linenum:" + result.lineNum + "<br>ave:" + result.val + "<br>nodata:" + result.noDataNum + "<br>invalidData:" + result.invalidDataNum : "null!";
     const d = <HTMLDivElement>document.getElementById("calc-result");
     d.innerHTML = resultstr;
 }
