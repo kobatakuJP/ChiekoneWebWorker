@@ -1,0 +1,22 @@
+@startuml first_class_figure
+class メイン {
+    CSVを拾ってくる()
+    結果を画面に表示()
+}
+class CSVパーサ {
+    CSV解析()
+}
+class 計算 {
+    通常for文でのCSV解析()
+    CSVを分割して、WebWorkerで並列作業するCSV解析、結果のマージもする()
+}
+package WebWorker {
+    class Worker {
+        CSV解析()
+    }
+}
+メイン --> 計算 : - CSV丸投げで解析結果をもらう
+計算 --> CSVパーサ : - CSV丸投げで解析結果をもらう
+計算 --> Worker : - CSVを分割して渡して結果をもらう
+Worker --> CSVパーサ : - CSV丸投げで解析結果をもらう
+@enduml
