@@ -288,6 +288,7 @@ onmessage = function (e) {
         calcArr.push(parseFloat((parse.targetArr[i]).replace(/^\"+|\"+$/g, "")));
     }
     postMessage(utils_1.Utils.getAve(calcArr, parse.lineNum, arg.noData));
+    close();
 };
 
 

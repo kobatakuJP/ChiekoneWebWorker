@@ -10,6 +10,6 @@ onmessage = function (e) {
     for (let i = 0, l = parse.targetArr.length; i < l; i++) {
         calcArr.push(parseFloat((parse.targetArr[i]).replace(/^\"+|\"+$/g, "")))
     }
-    // TODO 引数を2つにすると実行時エラー、引数一つだとビルドエラー。これの対処法を探す。
     postMessage(U.getAve(calcArr, parse.lineNum, arg.noData));
+    close();
 }

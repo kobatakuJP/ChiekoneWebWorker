@@ -174,10 +174,36 @@ cg.onclick = function () {
     a.send();
     a.onreadystatechange = function () {
         if (a.readyState === XMLHttpRequest.DONE) {
-            requestCalc({ csv: a.responseText, targetCellNum: 5, noData: calc_1.NoDataTreat.ignore }, getWorkType());
+            doTest(a.responseText, 1, getWorkType());
         }
     };
 };
+const t10t = document.getElementById("test10time");
+t10t.onclick = function () {
+    const a = new XMLHttpRequest();
+    a.open("GET", "http://127.0.0.1:8000/bigfile/rice.csv", true);
+    a.send();
+    a.onreadystatechange = function () {
+        if (a.readyState === XMLHttpRequest.DONE) {
+            doTest(a.responseText, 10);
+        }
+    };
+};
+function doTest(csv, num, worktype) {
+    for (let i = 0; i < num; i++) {
+        if (!isNaN(worktype)) {
+            requestCalc({ csv: csv, targetCellNum: 5, noData: calc_1.NoDataTreat.ignore }, worktype);
+        }
+        else {
+            for (let v in WorkType) {
+                const t = parseInt(v);
+                if (!isNaN(t)) {
+                    requestCalc({ csv: csv, targetCellNum: 5, noData: calc_1.NoDataTreat.ignore }, t);
+                }
+            }
+        }
+    }
+}
 function getWorkType() {
     const wr = document.getElementById("worktype-radio");
     return (parseInt(wr["worktype"].value));
