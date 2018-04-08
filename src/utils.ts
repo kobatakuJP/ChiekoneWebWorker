@@ -49,10 +49,12 @@ export namespace Utils {
         /** 空セルは配列に入らない（飛ばされる） */
         let targetArr: string[] = [];
         let currentCellNum = 0;
-        let lineNum = 0;
+        let lineNum = 1;
+        let lastChar: T;
 
         for (let t = ite.next(); t && t.value; t = ite.next()) {
-            switch (t.value) {
+            lastChar = t.value;
+            switch (lastChar) {
                 case csvSep:
                     currentCellNum++;
                     break;
@@ -64,9 +66,9 @@ export namespace Utils {
                 // nothing to do
             }
             if (currentCellNum === targetCellNum) {
-                if (t.value !== csvSep && t.value !== lineSep) {
+                if (lastChar !== csvSep && lastChar !== lineSep) {
                     // 当該セル内で、かつセパレータは邪魔なので除く
-                    targetCellVal.push(tostr(t.value));
+                    targetCellVal.push(tostr(lastChar));
                 }
             } else {
                 if (targetCellVal.length !== 0) {
@@ -75,6 +77,10 @@ export namespace Utils {
                     targetCellVal = [];
                 }
             }
+        }
+        if (lastChar === lineSep) {
+            // 最後が改行なら、次の行はカウントしないので一歩下がっておく
+            lineNum--;
         }
         return { targetArr, lineNum };
     }

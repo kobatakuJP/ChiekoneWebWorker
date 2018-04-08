@@ -92,6 +92,8 @@ class CsvCalc {
         this.csv = csv;
         this.noData = noData;
         this.csvToBuf();
+        this.initWorker();
+        this.workerIndex = 0;
     }
     async getAve(cellNum) {
         const promiz = this.separateAndAssignWork(cellNum);
@@ -127,7 +129,7 @@ class CsvCalc {
                 noData: NoDataTreat.ignore,
                 targetCellNum: cellNum
             };
-            let w = new Worker("worker.js");
+            let w = this.getWorker();
             w.onmessage = function (ev) {
                 resolve(ev.data);
                 w.terminate();
@@ -146,9 +148,22 @@ class CsvCalc {
         }
         this.bufView = this.bufView.slice(0, i);
     }
+    initWorker() {
+        this.workerPool = [];
+        for (let i = 0; i < CsvCalc.WORK_NUM; i++) {
+            this.workerPool.push(new Worker("worker.js"));
+        }
+    }
+    getWorker() {
+        this.workerIndex++;
+        if (this.workerIndex >= CsvCalc.WORK_NUM) {
+            this.workerIndex = 0;
+        }
+        return this.workerPool[this.workerIndex];
+    }
 }
 CsvCalc.LINE_SEPARATOR_CODE = "\n".charCodeAt(0);
-CsvCalc.WORK_NUM = 8;
+CsvCalc.WORK_NUM = 4;
 exports.CsvCalc = CsvCalc;
 function normalCalc(arg) {
     console.time("nParseTime");
@@ -382,9 +397,11 @@ var Utils;
         let targetCellVal = [];
         let targetArr = [];
         let currentCellNum = 0;
-        let lineNum = 0;
+        let lineNum = 1;
+        let lastChar;
         for (let t = ite.next(); t && t.value; t = ite.next()) {
-            switch (t.value) {
+            lastChar = t.value;
+            switch (lastChar) {
                 case csvSep:
                     currentCellNum++;
                     break;
@@ -395,8 +412,8 @@ var Utils;
                 default:
             }
             if (currentCellNum === targetCellNum) {
-                if (t.value !== csvSep && t.value !== lineSep) {
-                    targetCellVal.push(tostr(t.value));
+                if (lastChar !== csvSep && lastChar !== lineSep) {
+                    targetCellVal.push(tostr(lastChar));
                 }
             }
             else {
@@ -405,6 +422,9 @@ var Utils;
                     targetCellVal = [];
                 }
             }
+        }
+        if (lastChar === lineSep) {
+            lineNum--;
         }
         return { targetArr, lineNum };
     }

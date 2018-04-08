@@ -36,6 +36,10 @@ export interface CalcResult {
 }
 
 export class CsvCalc {
+    /** workerプール */
+    workerPool: Worker[];
+    /** wi */
+    workerIndex: number;
     /** 入力元CSV */
     csv: string;
     /** Workerとメモリシェアするために */
@@ -46,11 +50,13 @@ export class CsvCalc {
     noData: NoDataTreat;
     static LINE_SEPARATOR_CODE: number = "\n".charCodeAt(0);
     /** 同時実行ワーカ数 */
-    static WORK_NUM: number = 8; // TODO とりあえず８。
+    static WORK_NUM: number = 4; // TODO とりあえず８。
     constructor(csv: string, noData: NoDataTreat) {
         this.csv = csv;
         this.noData = noData;
         this.csvToBuf();
+        this.initWorker();
+        this.workerIndex = 0;
     }
 
     /** 
@@ -97,7 +103,7 @@ export class CsvCalc {
                 noData: NoDataTreat.ignore,
                 targetCellNum: cellNum
             }
-            let w = new Worker("worker.js");
+            let w = this.getWorker();
             w.onmessage = function (ev) {
                 resolve(<CalcResult>ev.data);
                 w.terminate();
@@ -118,6 +124,19 @@ export class CsvCalc {
             i++;
         }
         this.bufView = this.bufView.slice(0, i);
+    }
+    initWorker() {
+        this.workerPool = [];
+        for (let i = 0; i < CsvCalc.WORK_NUM; i++) {
+            this.workerPool.push(new Worker("worker.js"));
+        }
+    }
+    getWorker() {
+        this.workerIndex++;
+        if (this.workerIndex >= CsvCalc.WORK_NUM) {
+            this.workerIndex = 0;
+        }
+        return this.workerPool[this.workerIndex];
     }
 }
 
