@@ -212,6 +212,9 @@ function resultOutPut() {
     const kind = document.createElement("th");
     kind.innerHTML = "種別";
     tr_header.appendChild(kind);
+    const ave = document.createElement("th");
+    ave.innerHTML = "平均";
+    tr_header.appendChild(ave);
     for (let i = 0; i < (window.resultsForTable ? window.resultsForTable.maxLength : 0); i++) {
         const header = document.createElement("th");
         header.innerHTML = (i + 1).toString();
@@ -222,14 +225,24 @@ function resultOutPut() {
     const tr_worker = document.createElement("tr");
     const th_normalTitle = document.createElement("th");
     th_normalTitle.innerHTML = "フツーのfor文";
+    const th_normalAve = document.createElement("th");
+    th_normalAve.innerHTML = "null";
     tr_normal.appendChild(th_normalTitle);
+    tr_normal.appendChild(th_normalAve);
     const th_workerTitle = document.createElement("th");
     th_workerTitle.innerHTML = "WebWorker";
+    const th_workerAve = document.createElement("th");
+    th_workerAve.innerHTML = "null";
     tr_worker.appendChild(th_workerTitle);
+    tr_worker.appendChild(th_workerAve);
     table.appendChild(tr_normal);
     table.appendChild(tr_worker);
     const normalResult = window.resultsForTable.result[WorkType.normal];
     const workerResult = window.resultsForTable.result[WorkType.webworker];
+    let normalsum = 0;
+    let normalnum = 0;
+    let workersum = 0;
+    let workernum = 0;
     for (let i = 0, l = window.resultsForTable.maxLength; i < l; i++) {
         let normalTH = document.createElement("th");
         normalTH.innerHTML = "null";
@@ -240,16 +253,24 @@ function resultOutPut() {
             const tooltipStr = "linenum:" + normalSubResult.lineNum + "\nave:" + normalSubResult.val + "\nnodata:" + normalSubResult.noDataNum + "\ninvalidData:" + normalSubResult.invalidDataNum;
             normalTH.innerHTML = normalResult[i].ms + "ms";
             normalTH.title = tooltipStr;
+            normalTH.style.fontWeight = "normal";
+            normalsum += normalResult[i].ms;
+            normalnum++;
         }
         if (workerResult[i] && workerResult[i].result) {
             const workerSubResult = workerResult[i].result;
             const tooltipStr = "linenum:" + workerSubResult.lineNum + "\nave:" + workerSubResult.val + "\nnodata:" + workerSubResult.noDataNum + "\ninvalidData:" + workerSubResult.invalidDataNum;
             workerTH.innerHTML = workerResult[i].ms + "ms";
             workerTH.title = tooltipStr;
+            workerTH.style.fontWeight = "normal";
+            workersum += workerResult[i].ms;
+            workernum++;
         }
         tr_normal.appendChild(normalTH);
         tr_worker.appendChild(workerTH);
     }
+    th_normalAve.innerHTML = normalnum > 0 ? Math.ceil(normalsum / normalnum) + "ms" : "null";
+    th_workerAve.innerHTML = workernum > 0 ? Math.ceil(workersum / workernum) + "ms" : "null";
     const d = document.getElementById("calc-result");
     d.innerHTML = "";
     d.appendChild(table);
