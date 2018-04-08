@@ -91,7 +91,6 @@ class CsvCalc {
     constructor(csv, noData) {
         this.csv = csv;
         this.noData = noData;
-        this.csvToBuf();
     }
     async getAve(cellNum) {
         const promiz = this.separateAndAssignWork(cellNum);
@@ -100,30 +99,27 @@ class CsvCalc {
     }
     separateAndAssignWork(cellNum) {
         let result = [];
-        const length = this.bufView.length;
-        const aboutSepIndex = Math.ceil(length / CsvCalc.WORK_NUM);
+        const aboutSepIndex = Math.ceil(this.csv.length / CsvCalc.WORK_NUM);
         let startI = 0;
-        for (let i = aboutSepIndex; i < length; i++) {
-            if (this.bufView[i] === CsvCalc.LINE_SEPARATOR_CODE || i === length - 1) {
-                result.push(this.doWorker(startI, i, cellNum));
-                startI = i + 1;
-                i = i + aboutSepIndex - 1;
-                if (i > length) {
-                    break;
-                }
+        const ite = this.csv[Symbol.iterator]();
+        let i = 0, sepStartI = 0;
+        let buf = new Float32Array(this.csv.length);
+        for (let v of ite) {
+            buf[i - sepStartI] = v.codePointAt(0);
+            if ((i > sepStartI + aboutSepIndex && buf[i - sepStartI] === CsvCalc.LINE_SEPARATOR_CODE)) {
+                result.push(this.doWorker(buf.slice(0, (i - sepStartI + 1)), cellNum));
+                sepStartI = i + 1;
+                buf = new Float32Array(this.csv.length - sepStartI);
             }
+            i++;
         }
-        result.push(this.doWorker(startI, length - 1, cellNum));
+        result.push(this.doWorker(buf.slice(0, i - sepStartI), cellNum));
         return result;
     }
-    doWorker(s, e, cellNum) {
+    doWorker(cutCSV, cellNum) {
         return new Promise((resolve, reject) => {
             const arg = {
-                saBuf: this.buf,
-                indices: {
-                    startI: s,
-                    endI: e
-                },
+                buf: cutCSV,
                 noData: NoDataTreat.ignore,
                 targetCellNum: cellNum
             };
@@ -131,21 +127,11 @@ class CsvCalc {
             w.onmessage = function (ev) {
                 resolve(ev.data);
             };
-            w.postMessage(arg);
+            w.postMessage(arg, [arg.buf.buffer]);
         });
     }
-    csvToBuf() {
-        this.buf = new SharedArrayBuffer(this.csv.length * 4);
-        this.bufView = new Float32Array(this.buf);
-        const ite = this.csv[Symbol.iterator]();
-        let i = 0;
-        for (let v of ite) {
-            this.bufView[i] = v.codePointAt(0);
-            i++;
-        }
-        this.bufView = this.bufView.slice(0, i);
-    }
 }
+CsvCalc.LINE_SEPARATOR = "\n";
 CsvCalc.LINE_SEPARATOR_CODE = "\n".charCodeAt(0);
 CsvCalc.WORK_NUM = 8;
 exports.CsvCalc = CsvCalc;
@@ -294,11 +280,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = __webpack_require__(/*! ./utils */ "./src/utils.ts");
 onmessage = function (e) {
     const arg = e.data;
-    console.time("sliceCopyTime");
-    let buf = new Float32Array(arg.saBuf).slice(arg.indices.startI, arg.indices.endI);
-    console.timeEnd("sliceCopyTime");
     console.time("parseTimework");
-    const parse = utils_1.Utils.parseCSVKai(buf[Symbol.iterator](), (a) => String.fromCodePoint(a), utils_1.Utils.CSV_SEP_CODE, utils_1.Utils.LINE_SEP_CODE, arg.targetCellNum);
+    const parse = utils_1.Utils.parseCSVKai(arg.buf[Symbol.iterator](), (a) => String.fromCodePoint(a), utils_1.Utils.CSV_SEP_CODE, utils_1.Utils.LINE_SEP_CODE, arg.targetCellNum);
     console.timeEnd("parseTimework");
     let calcArr = [];
     for (let i = 0, l = parse.targetArr.length; i < l; i++) {
