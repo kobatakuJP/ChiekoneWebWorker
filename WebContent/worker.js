@@ -126,6 +126,7 @@ class CsvCalc {
             let w = new Worker("worker.js");
             w.onmessage = function (ev) {
                 resolve(ev.data);
+                w.terminate();
             };
             w.postMessage(arg, [arg.buf.buffer]);
         });
@@ -288,7 +289,6 @@ onmessage = function (e) {
         calcArr.push(parseFloat((parse.targetArr[i]).replace(/^\"+|\"+$/g, "")));
     }
     postMessage(utils_1.Utils.getAve(calcArr, parse.lineNum, arg.noData));
-    close();
 };
 
 

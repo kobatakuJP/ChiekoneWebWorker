@@ -93,6 +93,7 @@ export class CsvCalc {
             let w = new Worker("worker.js");
             w.onmessage = function (ev) {
                 resolve(<CalcResult>ev.data);
+                w.terminate();
             };
             w.postMessage(arg, [arg.buf.buffer]);
         });

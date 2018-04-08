@@ -11,5 +11,4 @@ onmessage = function (e) {
         calcArr.push(parseFloat((parse.targetArr[i]).replace(/^\"+|\"+$/g, "")))
     }
     postMessage(U.getAve(calcArr, parse.lineNum, arg.noData));
-    close();
 }
