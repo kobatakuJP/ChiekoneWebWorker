@@ -163,7 +163,7 @@ class CsvCalc {
     }
 }
 CsvCalc.LINE_SEPARATOR_CODE = "\n".charCodeAt(0);
-CsvCalc.WORK_NUM = 4;
+CsvCalc.WORK_NUM = 2;
 exports.CsvCalc = CsvCalc;
 function normalCalc(arg) {
     console.time("nParseTime");

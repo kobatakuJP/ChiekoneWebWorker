@@ -125,14 +125,15 @@ function resultOutPut() {
     for (let i = 0, l = window.resultsForTable.maxLength; i < l; i++) {
         let normalTH = document.createElement("th");
         normalTH.innerHTML = "null";
+        normalTH.style.fontWeight = "normal";
         let workerTH = document.createElement("th");
         workerTH.innerHTML = "null";
+        workerTH.style.fontWeight = "normal";
         if (normalResult[i] && normalResult[i].result) {
             const normalSubResult = normalResult[i].result;
             const tooltipStr = "linenum:" + normalSubResult.lineNum + "\nave:" + normalSubResult.val + "\nnodata:" + normalSubResult.noDataNum + "\ninvalidData:" + normalSubResult.invalidDataNum;
             normalTH.innerHTML = normalResult[i].ms + "ms";
             normalTH.title = tooltipStr;
-            normalTH.style.fontWeight = "normal";
             normalsum += normalResult[i].ms;
             normalnum++;
         }
@@ -141,7 +142,6 @@ function resultOutPut() {
             const tooltipStr = "linenum:" + workerSubResult.lineNum + "\nave:" + workerSubResult.val + "\nnodata:" + workerSubResult.noDataNum + "\ninvalidData:" + workerSubResult.invalidDataNum;
             workerTH.innerHTML = workerResult[i].ms + "ms";
             workerTH.title = tooltipStr;
-            workerTH.style.fontWeight = "normal";
             workersum += workerResult[i].ms;
             workernum++;
         }
