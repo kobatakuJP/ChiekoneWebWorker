@@ -7,16 +7,9 @@ export interface CalcArg {
 }
 
 export interface WorkArg {
-    indices: Indices;
-    saBuf: SharedArrayBuffer;
+    str: string;
     targetCellNum: number;
     noData: NoDataTreat;
-}
-
-/** 配列の対象インデックス、開始終了 */
-interface Indices {
-    startI: number;
-    endI: number;
 }
 
 /** データがない場合の扱い */
@@ -42,19 +35,14 @@ export class CsvCalc {
     workerIndex: number;
     /** 入力元CSV */
     csv: string;
-    /** Workerとメモリシェアするために */
-    buf: SharedArrayBuffer;
-    /** SharedArrayBufferを使うためのView */
-    bufView: Float32Array;
     /** データなしの場合の扱い規定 */
     noData: NoDataTreat;
-    static LINE_SEPARATOR_CODE: number = "\n".charCodeAt(0);
+    static LINE_SEPARATOR: string = "\n";
     /** 同時実行ワーカ数 */
-    static WORK_NUM: number = 4; // TODO とりあえず８。
+    static WORK_NUM: number = 8; // TODO とりあえず８。
     constructor(csv: string, noData: NoDataTreat) {
         this.csv = csv;
         this.noData = noData;
-        this.csvToBuf();
         this.initWorker();
         this.workerIndex = 0;
     }
@@ -71,12 +59,12 @@ export class CsvCalc {
     /** csvをざっと切ってワーカに渡す、を繰り返す。 */
     private separateAndAssignWork(cellNum: number): Promise<CalcResult>[] {
         let result: Promise<CalcResult>[] = [];
-        const length = this.bufView.length;
+        const length = this.csv.length;
         /** 均等割りした場合の数。これをもとにざっくり仕事を切っていく */
         const aboutSepIndex = Math.ceil(length / CsvCalc.WORK_NUM);
         let startI = 0;
         for (let i = aboutSepIndex; i < length; i++) {
-            if (this.bufView[i] === CsvCalc.LINE_SEPARATOR_CODE || i === length - 1/*最後が改行じゃないかもしれないし・・・*/) {
+            if (this.csv[i] === CsvCalc.LINE_SEPARATOR || i === length - 1/*最後が改行じゃないかもしれないし・・・*/) {
                 // とりあえず次の改行までを仕事範囲とする。
                 result.push(this.doWorker(startI, i, cellNum));
                 startI = i + 1; // 次のスタートはこの改行の次の文字から
@@ -95,11 +83,7 @@ export class CsvCalc {
         // TypedArray.prototype.sliceは結局コピーなのでもったいない。開始終了だけ渡す。
         return new Promise((resolve, reject) => {
             const arg: WorkArg = {
-                saBuf: this.buf,
-                indices: {
-                    startI: s,
-                    endI: e
-                },
+                str: this.csv.slice(s, e),
                 noData: NoDataTreat.ignore,
                 targetCellNum: cellNum
             }
@@ -110,20 +94,6 @@ export class CsvCalc {
             };
             w.postMessage(arg);
         });
-    }
-    /** 文字列をバッファに変換する */
-    csvToBuf() {
-        // 一文字4最大バイトなのでlenght*4
-        this.buf = new SharedArrayBuffer(this.csv.length * 4);
-        // ArrayBufferをシステムで扱うためにviewを作成
-        this.bufView = new Float32Array(this.buf);
-        const ite = this.csv[Symbol.iterator]();
-        let i = 0;
-        for (let v of ite) {
-            this.bufView[i] = v.codePointAt(0);
-            i++;
-        }
-        this.bufView = this.bufView.slice(0, i);
     }
     initWorker() {
         this.workerPool = [];

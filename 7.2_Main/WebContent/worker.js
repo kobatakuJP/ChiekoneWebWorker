@@ -91,7 +91,6 @@ class CsvCalc {
     constructor(csv, noData) {
         this.csv = csv;
         this.noData = noData;
-        this.csvToBuf();
         this.initWorker();
         this.workerIndex = 0;
     }
@@ -102,11 +101,11 @@ class CsvCalc {
     }
     separateAndAssignWork(cellNum) {
         let result = [];
-        const length = this.bufView.length;
+        const length = this.csv.length;
         const aboutSepIndex = Math.ceil(length / CsvCalc.WORK_NUM);
         let startI = 0;
         for (let i = aboutSepIndex; i < length; i++) {
-            if (this.bufView[i] === CsvCalc.LINE_SEPARATOR_CODE || i === length - 1) {
+            if (this.csv[i] === CsvCalc.LINE_SEPARATOR || i === length - 1) {
                 result.push(this.doWorker(startI, i, cellNum));
                 startI = i + 1;
                 i = i + aboutSepIndex - 1;
@@ -121,11 +120,7 @@ class CsvCalc {
     doWorker(s, e, cellNum) {
         return new Promise((resolve, reject) => {
             const arg = {
-                saBuf: this.buf,
-                indices: {
-                    startI: s,
-                    endI: e
-                },
+                str: this.csv.slice(s, e),
                 noData: NoDataTreat.ignore,
                 targetCellNum: cellNum
             };
@@ -136,17 +131,6 @@ class CsvCalc {
             };
             w.postMessage(arg);
         });
-    }
-    csvToBuf() {
-        this.buf = new SharedArrayBuffer(this.csv.length * 4);
-        this.bufView = new Float32Array(this.buf);
-        const ite = this.csv[Symbol.iterator]();
-        let i = 0;
-        for (let v of ite) {
-            this.bufView[i] = v.codePointAt(0);
-            i++;
-        }
-        this.bufView = this.bufView.slice(0, i);
     }
     initWorker() {
         this.workerPool = [];
@@ -162,8 +146,8 @@ class CsvCalc {
         return this.workerPool[this.workerIndex];
     }
 }
-CsvCalc.LINE_SEPARATOR_CODE = "\n".charCodeAt(0);
-CsvCalc.WORK_NUM = 4;
+CsvCalc.LINE_SEPARATOR = "\n";
+CsvCalc.WORK_NUM = 8;
 exports.CsvCalc = CsvCalc;
 function normalCalc(arg) {
     console.time("nParseTime");
@@ -315,11 +299,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = __webpack_require__(/*! ./utils */ "./src/utils.ts");
 onmessage = function (e) {
     const arg = e.data;
-    console.time("sliceCopyTime");
-    let buf = new Float32Array(arg.saBuf).slice(arg.indices.startI, arg.indices.endI);
-    console.timeEnd("sliceCopyTime");
     console.time("parseTimework");
-    const parse = utils_1.Utils.parseCSVKai(buf[Symbol.iterator](), (a) => String.fromCodePoint(a), utils_1.Utils.CSV_SEP_CODE, utils_1.Utils.LINE_SEP_CODE, arg.targetCellNum);
+    const parse = utils_1.Utils.parseCSVKai(arg.str[Symbol.iterator](), (a) => a, utils_1.Utils.CSV_SEP, utils_1.Utils.LINE_SEP, arg.targetCellNum);
     console.timeEnd("parseTimework");
     let calcArr = [];
     for (let i = 0, l = parse.targetArr.length; i < l; i++) {
