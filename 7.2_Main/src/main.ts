@@ -97,7 +97,7 @@ function pushResult(result: CRslt, ms: number, recordNum: number, threadNum: num
 }
 
 function initOutPutTable() {
-    const headers = ["record", "thread", "type", "平均", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+    const headers = ["record", "種別", "thread", "平均", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
     const table = document.createElement("table");
     const tr_header = document.createElement("tr"); table.appendChild(tr_header);
     for (let h of headers) {
@@ -111,31 +111,35 @@ function initOutPutTable() {
         /** レコード数が書かれるカラムの縦結合長 */
         let RNRowCount = 0;
         th_RN.innerHTML = RN.toString(); // レコード数が書いてあるカラム
-        let firstTN = true;
-        for (let TN of THREADNUMS) {
-            if (firstTN) {
-                firstTN = false;
-            } else {
-                tr = document.createElement("tr"); table.appendChild(tr);
-            }
-            const th_TN = document.createElement("th"); tr.appendChild(th_TN);
-            /** スレッド数が書かれるカラムの縦結合長 */
-            let TNRowCount = 0;
-            th_TN.innerHTML = TN.toString(); // スレッド数が書いてあるカラム
-            let firstWT = true;
-            for (let WT_STR in WorkType) {
-                const WT = parseInt(WT_STR);
-                if (!isNaN(WT)) {
+        let firstWT = true;
+        for (let WT_STR in WorkType) {
+            const WT = parseInt(WT_STR);
+            if (!isNaN(WT)) {
+                if (firstWT) {
+                    firstWT = false;
+                } else {
+                    tr = document.createElement("tr"); table.appendChild(tr);
+                }
+                const th_WT = document.createElement("th"); tr.appendChild(th_WT);
+                th_WT.innerHTML = getWTLavel(WT); // 仕事種別が書いてあるカラム
+                /** 種別が書かれるカラムの縦結合長 */
+                let WTRowCont = 0;
+                let firstTN = true;
+                for (let TN of THREADNUMS) {
                     RNRowCount++;
-                    TNRowCount++;
-                    if (firstWT) {
-                        firstWT = false;
+                    WTRowCont++;
+                    if (firstTN) {
+                        firstTN = false;
                     } else {
                         tr = document.createElement("tr"); table.appendChild(tr);
                     }
-                    const th_WT = document.createElement("th"); tr.appendChild(th_WT);
+                    if (WT === WorkType.normal) {
+                        // 通常for文の場合はスレッド数とかないので0を入れておく
+                        TN = 0;
+                    }
+                    const th_TN = document.createElement("th"); tr.appendChild(th_TN);
+                    th_TN.innerHTML = TN === 0 ? "-" : TN.toString(); // スレッド数が書いてあるカラム、0なら-にしておく
                     // 値を格納するときに辿れるようにidを付与する
-                    th_WT.innerHTML = getWTLavel(WT); // 仕事種別が書いてあるカラム
                     // 平均値カラム
                     const th_AVE = document.createElement("th"); tr.appendChild(th_AVE);
                     th_AVE.id = createColumnID(RN, TN, WT, AVEKEY); // アベレージは0カラムとする
@@ -147,9 +151,12 @@ function initOutPutTable() {
                         result.id = createColumnID(RN, TN, WT, i);
                         result.innerHTML = "N/A";
                     }
+                    if (TN === 0) {
+                        break;
+                    }
                 }
+                th_WT.rowSpan = WTRowCont;
             }
-            th_TN.rowSpan = TNRowCount;
         }
         th_RN.rowSpan = RNRowCount;
     }
@@ -161,21 +168,25 @@ function initOutPutTable() {
 
 /** ID生成。すごく雑に作ってあるがnumberが来たらtoStringしてくれるしいい感じに動くはず。 */
 function createColumnID(recordnum: number | string, threadnum: number | string, worktype: number | string, num: number | string): string {
-    return recordnum + "_" + threadnum + "_" + worktype + "_" + num;
+    return recordnum + "_" + worktype + "_" + threadnum + "_" + num;
 }
 
 class Results {
-    result: { [recordnum: number]: { [threadnum: number]: { [worktype: number]: { result: CRslt, ms: number }[] } } };
+    result: { [recordnum: number]: { [worktype: number]: { [threadnum: number]: { result: CRslt, ms: number }[] } } };
     constructor() {
         this.result = {};
         for (let rn of RECORDNUMS) {
             this.result[rn] = {};
-            for (let tn of THREADNUMS) {
-                this.result[rn][tn] = {};
-                for (let v in WorkType) {
-                    const t = parseInt(v);
-                    if (!isNaN(t)) {
-                        this.result[rn][tn][t] = [];
+            for (let v in WorkType) {
+                const t = parseInt(v);
+                if (!isNaN(t)) {
+                    this.result[rn][t] = {};
+                    if (t === WorkType.normal) {
+                        // 通常ケースではスレッド数関係ないので
+                        this.result[rn][t][0] = [];
+                    }
+                    for (let tn of THREADNUMS) {
+                        this.result[rn][t][tn] = [];
                     }
                 }
             }
@@ -183,25 +194,30 @@ class Results {
         initOutPutTable();
     }
     push(result: { result: CRslt, ms: number }, worktype: WorkType, recordnum: number, threadnum: number) {
-        if (!this.result[recordnum] || !this.result[recordnum][threadnum] || !this.result[recordnum][threadnum][worktype]) {
+        if (worktype === WorkType.normal) {
+            // 通常ケースではスレッド数関係ないので
+            threadnum = 0;
+        }
+        if (!this.result[recordnum] || !this.result[recordnum][worktype] || !this.result[recordnum][worktype][threadnum]) {
             alert("Results.pushできません。なにかがおかしいです。recordnum:" + recordnum + ", threadnum:" + threadnum + ", worktype:" + worktype);
         }
-        this.result[recordnum][threadnum][worktype].unshift(result);
-        if (this.result[recordnum][threadnum][worktype].length > TESTNUM) {
-            this.result[recordnum][threadnum][worktype] = this.result[recordnum][threadnum][worktype].slice(0, TESTNUM);
+        this.result[recordnum][worktype][threadnum].unshift(result);
+        if (this.result[recordnum][worktype][threadnum].length > TESTNUM) {
+            this.result[recordnum][worktype][threadnum] = this.result[recordnum][worktype][threadnum].slice(0, TESTNUM);
         }
     }
     drawOutput() {
         // こちらはキー値で拾っていくので、constructorと異なりfor...inである。
         for (let rn in this.result) {
-            for (let tn in this.result[rn]) {
-                for (let wt in this.result[rn][tn]) {
-                    const val = this.result[rn][tn][wt];
+            for (let wt in this.result[rn]) {
+                for (let tn in this.result[rn][wt]) {
+                    const val = this.result[rn][wt][tn];
                     let sum = 0;
                     for (let i = 0, l = val.length; i < l; i++) {
                         // DOM探しの時、iを一つ増やすことだけ注意する。
                         const column = document.getElementById(createColumnID(rn, tn, wt, i + 1));
                         column.innerHTML = val[i].ms + "";
+                        column.title = "linenum:" + val[i].result.lineNum + "\nave:" + val[i].result.val + "\nnodata:" + val[i].result.noDataNum + "\ninvalidData:" + val[i].result.invalidDataNum;
                         sum += val[i].ms;
                     }
                     if (val.length > 0) {
