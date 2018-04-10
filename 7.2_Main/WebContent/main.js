@@ -338,7 +338,7 @@ class Results {
         initOutPutTable();
     }
     push(result, worktype, recordnum, threadnum) {
-        if (!this.result[recordnum] || this.result[recordnum][threadnum] || this.result[recordnum][threadnum][worktype]) {
+        if (!this.result[recordnum] || !this.result[recordnum][threadnum] || !this.result[recordnum][threadnum][worktype]) {
             alert("Results.pushできません。なにかがおかしいです。recordnum:" + recordnum + ", threadnum:" + threadnum + ", worktype:" + worktype);
         }
         this.result[recordnum][threadnum][worktype].unshift(result);
