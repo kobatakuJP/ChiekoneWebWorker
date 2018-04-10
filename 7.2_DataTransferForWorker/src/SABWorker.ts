@@ -1,5 +1,6 @@
 onmessage = function (e) {
     // 取得したSharedArrayBufferのViewを作成
     let view = new Float32Array(e.data.val);
-    console.log('SABWorker: length' + view.length + ', time:' + (Date.now() - e.data.time));
+    view = view.slice(e.data.index.s, e.data.index.e);
+    console.log('cost3_2and3: ' + (Date.now() - e.data.time) + ' SABWorker: length' + view.length);
 }

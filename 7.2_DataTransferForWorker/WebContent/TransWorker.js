@@ -80,7 +80,7 @@
 
 onmessage = function (e) {
     let s = e.data.val;
-    console.log('TransWorker: length:' + s.length + ', time:' + (Date.now() - e.data.time));
+    console.log('cost2_2: ' + (Date.now() - e.data.time) + ' TransWorker: length:' + s.length);
 };
 
 
