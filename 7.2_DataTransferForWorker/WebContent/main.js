@@ -79,26 +79,21 @@
 /***/ (function(module, exports) {
 
 let num = 8 * 1000 * 1000;
-let str = (function () {
-    let s = "";
-    for (let i = 0; i < num; i++) {
-        s += "a";
-    }
-    return s;
-})();
+let str = "";
 let sepnum = 8;
 function init() {
     num = Math.ceil(parseFloat(document.getElementById("num").value));
     str = (function () {
         let s = "";
-        for (let i = 0; i < num; i++) {
+        for (let i = 0; i < num / 100; i++) {
             s += getRandChar();
         }
+        s = s.repeat(100);
         return s;
     })();
     sepnum = Math.ceil(parseFloat(document.getElementById("sep").value));
 }
-let catalog = "abcdefghijklmnopqrstuvwxyz";
+let catalog = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゐゆゑよらりるれろわをん";
 function getRandChar() {
     return catalog[Math.floor(Math.random() * catalog.length)];
 }
@@ -144,6 +139,7 @@ function cost3_2and3() {
     let sba = cost3_1();
     worker.postMessage({ val: sba, time: Date.now(), index: { s: 0, e: num / sepnum } });
 }
+init();
 document.getElementById("cost1").onclick = cost1_2and3;
 document.getElementById("cost2").onclick = cost2_2;
 document.getElementById("cost3").onclick = cost3_2and3;
