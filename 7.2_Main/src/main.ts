@@ -6,8 +6,8 @@ declare global {
 }
 
 enum WorkType {
-    webworker,
-    normal
+    normal,
+    webworker
 }
 
 function getWTLavel(wt: WorkType): string {

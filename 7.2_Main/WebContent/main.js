@@ -178,8 +178,8 @@ const calc = __webpack_require__(/*! ./calc */ "./src/calc.ts");
 const calc_1 = __webpack_require__(/*! ./calc */ "./src/calc.ts");
 var WorkType;
 (function (WorkType) {
-    WorkType[WorkType["webworker"] = 0] = "webworker";
-    WorkType[WorkType["normal"] = 1] = "normal";
+    WorkType[WorkType["normal"] = 0] = "normal";
+    WorkType[WorkType["webworker"] = 1] = "webworker";
 })(WorkType || (WorkType = {}));
 function getWTLavel(wt) {
     switch (wt) {
