@@ -13,9 +13,32 @@
   <div class="controls">
     <div>
       <form id="worktype-radio">
-        <input type="radio" name="worktype" value="0"> WebWorker
-        <input type="radio" name="worktype" value="1" checked> フツーのfor文
+        <div>
+          <label for="radio-ww">WebWorker</label>
+          <input id="radio-ww" type="radio" name="worktype" value="0">
+        </div>
+        <div>
+          <label for="radio-nrm">メインでfor文</label>
+          <input id="radio-nrm" type="radio" name="worktype" value="1" checked>
+        </div>
       </form>
+    </div>
+    <div>
+      レコード数
+      <select name="records" id="records-selector">
+        <option value=50000>50000</option>
+        <option value=100000>100000</option>
+        <option value=200000>200000</option>
+      </select>
+    </div>
+    <div>
+      スレッド数
+      <select name="threads" id="threads-selector">
+        <option value=1>1</option>
+        <option value=4>4</option>
+        <option value=8>8</option>
+        <option value=16>16</option>
+      </select>
     </div>
     <div>
       <button id="csvget">1回テスト</button>

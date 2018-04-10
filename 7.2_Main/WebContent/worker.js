@@ -88,9 +88,10 @@ var NoDataTreat;
     NoDataTreat[NoDataTreat["zero"] = 1] = "zero";
 })(NoDataTreat = exports.NoDataTreat || (exports.NoDataTreat = {}));
 class CsvCalc {
-    constructor(csv, noData) {
+    constructor(csv, noData, threadNum) {
         this.csv = csv;
         this.noData = noData;
+        this.workNum = threadNum;
         this.initWorker();
         this.workerIndex = 0;
     }
@@ -102,7 +103,7 @@ class CsvCalc {
     separateAndAssignWork(cellNum) {
         let result = [];
         const length = this.csv.length;
-        const aboutSepIndex = Math.ceil(length / CsvCalc.WORK_NUM);
+        const aboutSepIndex = Math.ceil(length / this.workNum);
         let startI = 0;
         for (let i = aboutSepIndex; i < length; i++) {
             if (this.csv[i] === CsvCalc.LINE_SEPARATOR || i === length - 1) {
@@ -134,20 +135,19 @@ class CsvCalc {
     }
     initWorker() {
         this.workerPool = [];
-        for (let i = 0; i < CsvCalc.WORK_NUM; i++) {
+        for (let i = 0; i < this.workNum; i++) {
             this.workerPool.push(new Worker("worker.js"));
         }
     }
     getWorker() {
         this.workerIndex++;
-        if (this.workerIndex >= CsvCalc.WORK_NUM) {
+        if (this.workerIndex >= this.workNum) {
             this.workerIndex = 0;
         }
         return this.workerPool[this.workerIndex];
     }
 }
 CsvCalc.LINE_SEPARATOR = "\n";
-CsvCalc.WORK_NUM = 8;
 exports.CsvCalc = CsvCalc;
 function normalCalc(arg) {
     console.time("nParseTime");

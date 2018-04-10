@@ -37,12 +37,13 @@ export class CsvCalc {
     csv: string;
     /** データなしの場合の扱い規定 */
     noData: NoDataTreat;
-    static LINE_SEPARATOR: string = "\n";
     /** 同時実行ワーカ数 */
-    static WORK_NUM: number = 8; // TODO とりあえず８。
-    constructor(csv: string, noData: NoDataTreat) {
+    workNum: number;
+    static LINE_SEPARATOR: string = "\n";
+    constructor(csv: string, noData: NoDataTreat, threadNum: number) {
         this.csv = csv;
         this.noData = noData;
+        this.workNum = threadNum;
         this.initWorker();
         this.workerIndex = 0;
     }
@@ -61,7 +62,7 @@ export class CsvCalc {
         let result: Promise<CalcResult>[] = [];
         const length = this.csv.length;
         /** 均等割りした場合の数。これをもとにざっくり仕事を切っていく */
-        const aboutSepIndex = Math.ceil(length / CsvCalc.WORK_NUM);
+        const aboutSepIndex = Math.ceil(length / this.workNum);
         let startI = 0;
         for (let i = aboutSepIndex; i < length; i++) {
             if (this.csv[i] === CsvCalc.LINE_SEPARATOR || i === length - 1/*最後が改行じゃないかもしれないし・・・*/) {
@@ -97,13 +98,13 @@ export class CsvCalc {
     }
     initWorker() {
         this.workerPool = [];
-        for (let i = 0; i < CsvCalc.WORK_NUM; i++) {
+        for (let i = 0; i < this.workNum; i++) {
             this.workerPool.push(new Worker("worker.js"));
         }
     }
     getWorker() {
         this.workerIndex++;
-        if (this.workerIndex >= CsvCalc.WORK_NUM) {
+        if (this.workerIndex >= this.workNum) {
             this.workerIndex = 0;
         }
         return this.workerPool[this.workerIndex];
