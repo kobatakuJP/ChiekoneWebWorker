@@ -21,23 +21,11 @@
 
 性能測定ツール。Web Workerへのデータ転送時間測定を目的とする。
 
-比較できるものは以下の3ケース。
-
-- stringをそのままオブジェクトとしてWeb Workerへ転送
-- Float32ArrayをTransferableとしてWeb Workerへ転送
-- SharedArrayBufferをWeb Workerへ転送
-
-#### 前提パッケージ
-
-- python 3.x系 : ローカルサーバ立ち上げに必要。ブラウザ上でhtmlを見るのに別の方法を用いるなら不要。
-    - ```$ python```で動作するようにpathを設定しておくこと
-
-#### ツール使用方法
-
+詳細は[当該ツールのREADME](./7.2_DataTransferForWorker/README.md)参照
 
 ### 7.2_Main
 
-性能測定ツール
+性能測定ツール。Web WorkerでCSV解析する速度と通常のfor文でCSV解析する速度を比較する。
 
-
+詳細は[当該ツールのREADME](./7.2_Main/README.md)参照
 
