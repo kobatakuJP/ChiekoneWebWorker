@@ -27,7 +27,8 @@ Web Workerへのデータ転送時間を測定するツール。
 
  1. $ git clone \<repository URL\>
  1. $ cd \<cloned path\>\7.2_DataTransferForWorker\WebContent\
- 1. $ openserver.bat
+ 1. $ openserver.bat 
+     - 要python3.x、もし別の手段でhttpサーバを立ち上げるならば、この手順は不要
  1. ブラウザを立ち上げ、以下に接続する
     - http://127.0.0.1:8000
  1. ブラウザでF12キーを押し、開発者ツールを表示する（コンソールに結果が出るため）
